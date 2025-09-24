@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <title>Arcade Balloon Profile</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Nunito:wght@600;800&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg1:#7be0ff;
+      --bg2:#9ef29c;
+      --hud:#0b1020;
+      --accent1:#ff6b6b;
+      --accent2:#ffd93d;
+      --glow: 0 6px 30px rgba(0,0,0,0.25);
+    }
+
+    /* reset */
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%}
+
+    body{
+      font-family: "Nunito", system-ui, -apple-system, "Segoe UI", Roboto, "Press Start 2P", sans-serif;
+      background: radial-gradient(circle at 20% 30%, rgba(255,255,255,0.35) 0%, transparent 12%),
+                  linear-gradient(180deg, var(--bg1) 0%, #9fe0ff 30%, #c6f7d9 60%, var(--bg2) 100%);
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:24px;
+      overflow:hidden;
+    }
+
+    /* terrain grid (subtle tile / map look) */
+    .terrain {
+      position:absolute;
+      inset:0;
+      background-image:
+        radial-gradient(circle at 10% 15%, rgba(255,255,255,0.06) 0 2px, transparent 2px),
+        repeating-linear-gradient(90deg, rgba(0,0,0,0.02) 0 1px, transparent 1px 40px);
+      opacity:0.6;
+      pointer-events:none;
+      transform: scale(1.1);
+      filter: blur(.4px);
+    }
+
+    /* moving clouds (top-down look: soft round shapes) */
+    .cloud {
+      position:absolute;
+      width:160px;
+      height:90px;
+      background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.95) 0 18% , rgba(255,255,255,0.9) 18% 45%, rgba(255,255,255,0.6) 45% 100%);
+      border-radius: 50%/60%;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.08) inset;
+      filter: blur(2px);
+      opacity: .95;
+      animation: cloudFloat linear infinite;
+    }
+    .cloud.c1{left:5%; top:12%; transform:scale(.9); animation-duration:32s}
+    .cloud.c2{left:70%; top:6%; transform:scale(.8); animation-duration:38s; opacity:.85}
+    .cloud.c3{left:40%; top:30%; transform:scale(1.05); animation-duration:28s; opacity:.9}
+    @keyframes cloudFloat {
+      0%{transform: translateX(-30px) scale(.95)}
+      50%{transform: translateX(30px) scale(1.02)}
+      100%{transform: translateX(-30px) scale(.95)}
+    }
+
+    /* main wrapper (HUD card + balloon zone) */
+    .stage {
+      position:relative;
+      width:980px;
+      max-width:100%;
+      height:640px;
+      border-radius:20px;
+      overflow:hidden;
+      box-shadow: var(--glow);
+      display:flex;
+      gap:18px;
+    }
+
+    /* left: game map area (balloon) */
+    .map {
+      flex:1;
+      background:
+        radial-gradient(ellipse at center, rgba(255,255,255,0.06), transparent 18%),
+        linear-gradient(180deg, rgba(0,0,0,0.02), transparent 50%);
+      position:relative;
+      padding:18px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+
+    /* decorative 'fields' tiles to give top-down feel */
+    .map::before{
+      content:"";
+      position:absolute; inset:0;
+      background-image:
+        linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+      background-size: 80px 80px, 80px 80px;
+      opacity:.35;
+      pointer-events:none;
+    }
+
+    /* the balloon top-down (circle with striped canopy) */
+    .balloon {
+      position:relative;
+      width:260px;
+      height:260px;
+      border-radius:50%;
+      display:grid;
+      place-items:center;
+      transform-style:preserve-3d;
+      animation: hover 4s ease-in-out infinite;
+    }
+
+    /* canopy using conic gradient (stripes) */
+    .canopy {
+      width:100%;
+      height:100%;
+      border-radius:50%;
+      background:
+        conic-gradient(from 120deg at 50% 50%,
+          #ff6b6b 0deg 45deg,
+          #ffb86b 45deg 90deg,
+          #ffd93d 90deg 135deg,
+          #6be5ff 135deg 180deg,
+          #7d6bff 180deg 225deg,
+          #ff6bd9 225deg 270deg,
+          #ff6b6b 270deg 315deg,
+          #ffb86b 315deg 360deg);
+      box-shadow: 0 30px 60px rgba(0,0,0,0.15), inset 0 -14px 30px rgba(0,0,0,0.12);
+      border:6px solid rgba(255,255,255,0.12);
+      position:relative;
+      overflow:hidden;
+    }
+
+    /* glossy highlight to suggest curvature */
+    .canopy::after{
+      content:"";
+      position:absolute;
+      top:10%;
+      left:8%;
+      width:60%;
+      height:40%;
+      border-radius:50%;
+      background: linear-gradient(135deg, rgba(255,255,255,0.55), rgba(255,255,255,0.05));
+      mix-blend-mode:screen;
+      transform: rotate(-12deg);
+      opacity:.9;
+      filter: blur(2px);
+    }
+
+    /* rim (shadow ring) */
+    .rim {
+      position:absolute;
+      inset: auto 6% 6% 6%;
+      height:12%;
+      border-radius: 50%;
+      background: radial-gradient(ellipse at center, rgba(0,0,0,0.18), rgba(0,0,0,0.02));
+      transform: translateY(12%);
+      opacity:.9;
+      z-index:3;
+    }
+
+    /* basket seen from top (small circle in middle) */
+    .basket {
+      position:absolute;
+      width:54px;
+      height:54px;
+      background: radial-gradient(circle at 30% 30%, #7a4b2f, #5a2f1a);
+      border-radius:50%;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+      z-index:4;
+      transform: translateY(45%);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      color:#fff;
+      font-size:10px;
+      font-weight:700;
+      letter-spacing:.5px;
+    }
+
+    /* basket tag / avatar */
+    .basket img{
+      width:42px;height:42px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,0.16)
+    }
+
+    /* shadow on map */
+    .balloon-shadow {
+      position:absolute;
+      width:220px;
+      height:80px;
+      left:50%; transform:translateX(-50%);
+      top:68%;
+      background: radial-gradient(ellipse at center, rgba(0,0,0,0.25), rgba(0,0,0,0.06));
+      filter: blur(10px);
+      z-index:1;
+      animation: shadowPulse 4s ease-in-out infinite;
+    }
+
+    @keyframes hover{
+      0%{transform: translateY(-8px) rotateZ(-2deg)}
+      50%{transform: translateY(6px) rotateZ(2deg)}
+      100%{transform: translateY(-8px) rotateZ(-2deg)}
+    }
+    @keyframes shadowPulse{
+      0%{transform:translateY(0) scale(1)}
+      50%{transform:translateY(-6px) scale(.92)}
+      100%{transform:translateY(0) scale(1)}
+    }
+
+    /* right: HUD / profile panel */
+    .hud {
+      width:340px;
+      background: linear-gradient(180deg, rgba(11,16,32,0.96), rgba(6,10,22,0.95));
+      color:#fff;
+      padding:22px;
+      border-radius:12px;
+      border: 2px solid rgba(255,255,255,0.04);
+      box-shadow: 0 8px 40px rgba(10,10,22,0.6);
+      display:flex;
+      flex-direction:column;
+      gap:14px;
+      align-items:stretch;
+    }
+
+    .hud .title {
+      font-family: "Press Start 2P", monospace;
+      font-size:12px;
+      letter-spacing:1px;
+      color:var(--accent2);
+      text-align:center;
+    }
+
+    .avatar {
+      display:flex;
+      gap:14px;
+      align-items:center;
+      padding:6px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent);
+      border-radius:10px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
+    }
+    .avatar img{
+      width:84px;height:84px;border-radius:14px;object-fit:cover;border:3px solid rgba(255,255,255,0.06)
+    }
+    .avatar .meta{
+      display:flex;flex-direction:column;gap:6px;
+    }
+    .meta .name{font-size:14px;font-weight:800;color:var(--accent1);letter-spacing:0.5px}
+    .meta .role{font-size:11px;color:#d6eaff;opacity:.9}
+
+    .info {
+      font-size:12px;
+      background: linear-gradient(90deg, rgba(255,255,255,0.02), transparent);
+      padding:10px;border-radius:8px;
+      display:flex;flex-direction:column;gap:6px;color:#d8e9ff;
+    }
+    .info .row{display:flex;justify-content:space-between;align-items:center}
+    .info .label{font-size:11px;color:#99c7ff}
+    .info .val{font-weight:700;color:#fff}
+
+    .btns{display:flex;gap:10px;margin-top:6px}
+    .btn{
+      flex:1;padding:10px 12px;border-radius:10px;text-align:center;font-weight:800;
+      cursor:pointer;user-select:none;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+      transition: transform .15s ease, box-shadow .15s ease;
+      font-size:12px;
+    }
+    .btn.play{background: linear-gradient(90deg,var(--accent1), #ff9a6b); color:#111}
+    .btn.follow{background: linear-gradient(90deg,#6be5ff,#7d6bff); color:#081026}
+
+    .btn:active{transform:translateY(2px);box-shadow: 0 4px 10px rgba(0,0,0,0.28)}
+
+    /* small stats / progress bars */
+    .stat {display:flex;flex-direction:column;gap:6px}
+    .stat .bar{
+      height:10px;background:rgba(255,255,255,0.06);border-radius:8px;overflow:hidden;
+      position:relative;
+    }
+    .stat .fill{
+      height:100%;
+      background: linear-gradient(90deg, #ffd93d, #ff6b6b);
+      width:60%;
+      box-shadow: 0 4px 12px rgba(255,107,107,0.14) inset;
+    }
+
+    /* responsive */
+    @media (max-width:920px){
+      .stage{flex-direction:column;height:auto;padding:12px}
+      .hud{width:100%}
+      .map{height:420px}
+    }
+
+  </style>
+</head>
+<body>
+  <div class="terrain"></div>
+  <div class="cloud c1" aria-hidden="true"></div>
+  <div class="cloud c2" aria-hidden="true"></div>
+  <div class="cloud c3" aria-hidden="true"></div>
+
+  <div class="stage" role="application" aria-label="Balloon profile stage">
+
+    <section class="map" aria-label="Map area">
+      <div class="balloon" title="Balloon (top view)">
+        <div class="canopy" role="img" aria-label="Canopy"></div>
+        <div class="rim" aria-hidden="true"></div>
+
+        <!-- basket with user's avatar (top-down small circle) -->
+        <div class="basket" aria-hidden="false">
+          <img src="ton1.JPG" alt="avatar">
+        </div>
+      </div>
+
+      <!-- soft shadow under balloon -->
+      <div class="balloon-shadow" aria-hidden="true"></div>
+    </section>
+
+    <aside class="hud" aria-label="Profile HUD">
+      <div class="title">BALLOON PILOT</div>
+
+      <div class="avatar">
+        <img src="ton1.JPG" alt="Profile avatar">
+        <div class="meta">
+          <div class="name">Issarapong R.</div>
+          <div class="role">Computer Engineering</div>
+          <div style="font-size:11px;color:#9ecbff;margin-top:4px">Faculty of Engineering & Industrial Technology</div>
+        </div>
+      </div>
+
+      <div class="info" aria-live="polite">
+        <div class="row"><div class="label">E-mail</div><div class="val"><a href="mailto:tatontom123@gmail.com" style="color:inherit;text-decoration:none">tatontom123@gmail.com</a></div></div>
+        <div class="row"><div class="label">Level</div><div class="val">Pilot 12</div></div>
+        <div class="row"><div class="label">Altitude</div><div class="val">1,240 m</div></div>
+      </div>
+
+      <div class="stat" style="margin-top:6px">
+        <div style="display:flex;justify-content:space-between"><div class="label">Fuel</div><div class="val">60%</div></div>
+        <div class="bar"><div class="fill" style="width:60%"></div></div>
+      </div>
+
+      <div class="btns">
+        <div class="btn play">START</div>
+        <div class="btn follow">FOLLOW</div>
+      </div>
+    </aside>
+
+  </div>
+</body>
+</html>
